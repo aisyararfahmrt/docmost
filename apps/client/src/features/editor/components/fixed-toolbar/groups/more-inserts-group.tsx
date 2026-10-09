@@ -14,6 +14,7 @@ import {
   IconSitemap,
   IconTable,
   IconTag,
+  IconHierarchy2,
 } from "@tabler/icons-react";
 import IconExcalidraw from "@/components/icons/icon-excalidraw";
 import IconMermaid from "@/components/icons/icon-mermaid";
@@ -186,6 +187,12 @@ export const MoreInsertsGroup: FC<Props> = ({ editor, templateMode }) => {
             Excalidraw
           </Menu.Item>
         )}
+        <Menu.Item
+          leftSection={<IconHierarchy2 size={16} />}
+          onClick={() => editor.chain().focus().setC4Model().run()}
+        >
+          {t("C4 Model")}
+        </Menu.Item>
 
         <Menu.Divider />
         <Menu.Label>{t("Embeds")}</Menu.Label>

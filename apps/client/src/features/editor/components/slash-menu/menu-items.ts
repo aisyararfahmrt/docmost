@@ -30,6 +30,7 @@ import {
   IconTag,
   IconMoodSmile,
   IconRotate2,
+  IconHierarchy2,
 } from "@tabler/icons-react";
 import {
   CommandProps,
@@ -476,6 +477,21 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       icon: IconExcalidraw,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).setExcalidraw().run(),
+    },
+    {
+      title: "C4 Model",
+      description: "Design C4 architecture diagrams",
+      searchTerms: [
+        "c4",
+        "architecture",
+        "diagrams",
+        "context",
+        "container",
+        "component",
+      ],
+      icon: IconHierarchy2,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).setC4Model().run(),
     },
     {
       title: "Date",
