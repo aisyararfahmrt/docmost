@@ -60,3 +60,6 @@ Special thanks to;
 
 [Algolia](https://www.algolia.com/) for providing full-text search to the docs.
 
+## Developer Notes
+docker compose -f docker-compose.build.yml up -d --build
+docker compose -f docker-compose.build.yml up -d --build docmost

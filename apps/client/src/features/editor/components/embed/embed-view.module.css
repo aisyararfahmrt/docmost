@@ -3,8 +3,22 @@
 }
 
 .embedContainer {
+  position: relative;
   display: flex;
   justify-content: center;
+  width: 100%;
+  padding-top: 4px;
+}
+
+.editable {
+  padding-top: 32px;
+}
+
+.selected {
+  .controls {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .embedWrapper {
@@ -17,9 +31,201 @@
   }
 }
 
+/* Full-bleed breakout: pulled out of the centered 900px column with
+ * negative margins (same technique as base-embed). JS sets
+ * --embed-extend-l/r to the distance to <main> edges. */
+.fitBreakout {
+  width: 100%;
+  margin-left: calc(-1 * var(--embed-extend-l, 0px));
+  margin-right: calc(-1 * var(--embed-extend-r, 0px));
+}
+
+.fitEmbedWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  /* Free zoom/pinch inside Figma must not be blocked */
+  touch-action: auto;
+
+  @mixin light {
+    background-color: var(--mantine-color-gray-0);
+  }
+
+  @mixin dark {
+    background-color: var(--mantine-color-dark-7);
+  }
+}
+
+.resizing {
+  user-select: none;
+}
+
+.resizeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: transparent;
+}
+
+.fitResizeHandle {
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  right: 20px;
+  height: 14px;
+  cursor: ns-resize;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 11;
+  touch-action: none;
+  user-select: none;
+}
+
+.fitResizeBar {
+  width: 56px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: light-dark(
+    var(--mantine-color-blue-4),
+    var(--mantine-color-blue-5)
+  );
+}
+
+.fitEmbedWrapper:hover .fitResizeHandle,
+.fitEmbedWrapper:global(.ProseMirror-selectednode) .fitResizeHandle,
+.resizing .fitResizeHandle {
+  opacity: 1;
+}
+
+.controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 12;
+  display: inline-flex;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.embedContainer:hover .controls,
+.embedContainer:focus-within .controls,
+:global(.ProseMirror .node-embed.ProseMirror-selectednode) .controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .embedIframe {
   width: 100%;
   height: 100%;
   border: none;
+  border-radius: 0 0 8px 8px;
+  display: block;
+  /* Never block Figma's own wheel-zoom / pinch-zoom / pan */
+  touch-action: auto;
+  pointer-events: auto;
+}
+
+/* Fake browser chrome: no address bar, no URL anywhere. */
+.browserBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px;
+  border-bottom: 1px solid
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  background-color: light-dark(
+    var(--mantine-color-gray-1),
+    var(--mantine-color-dark-6)
+  );
+  user-select: none;
+}
+
+.browserDots {
+  display: inline-flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.browserDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: light-dark(
+    var(--mantine-color-gray-4),
+    var(--mantine-color-dark-3)
+  );
+  display: inline-block;
+}
+
+.browserTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browserActions {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.browserViewport {
+  width: 100%;
+  height: calc(100% - 36px);
+}
+
+.figmaBrowserWrap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
   border-radius: 8px;
+  overflow: hidden;
+}
+
+.fitEmbedWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreenViewport {
+  width: 100%;
+  height: calc(100vh - 60px);
+}
+
+.fullscreenViewport .embedIframe {
+  border-radius: 0;
+}
+
+@media (max-width: 48em) {
+  .embedContainer {
+    padding-top: 34px;
+  }
+
+  /* On small screens the breakout would overflow the viewport, disable it */
+  .fitBreakout {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+@media print {
+  .controls,
+  .fitResizeHandle {
+    display: none !important;
+  }
+
+  .fitBreakout {
+    margin-left: 0;
+    margin-right: 0;
+  }
 }

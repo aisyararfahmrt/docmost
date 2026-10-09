@@ -10,8 +10,11 @@ export interface EmbedAttributes {
   src?: string;
   provider: string;
   align?: string;
-  width?: number;
-  height?: number;
+  width?: number | null;
+  height?: number | null;
+  fitToScreen?: boolean;
+  marginX?: number;
+  figmaPages?: boolean;
 }
 
 declare module "@tiptap/core" {
@@ -64,17 +67,63 @@ export const Embed = Node.create<EmbedOptions>({
         }),
       },
       width: {
-        default: 800,
-        parseHTML: (element) => element.getAttribute("data-width"),
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-width");
+          if (!raw) return null;
+          const width = parseFloat(raw);
+          return Number.isFinite(width) ? width : null;
+        },
         renderHTML: (attributes: EmbedAttributes) => ({
           "data-width": attributes.width,
         }),
       },
       height: {
         default: 600,
-        parseHTML: (element) => element.getAttribute("data-height"),
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-height");
+          if (!raw) return null;
+          const height = parseFloat(raw);
+          return Number.isFinite(height) ? height : null;
+        },
         renderHTML: (attributes: EmbedAttributes) => ({
           "data-height": attributes.height,
+        }),
+      },
+      fitToScreen: {
+        default: false,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-fit-to-screen");
+          if (raw === null) {
+            return element.getAttribute("data-provider") === "figma";
+          }
+          return raw === "true";
+        },
+        renderHTML: (attributes: EmbedAttributes) => ({
+          "data-fit-to-screen": attributes.fitToScreen ? "true" : "false",
+        }),
+      },
+      marginX: {
+        default: 0,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-margin-x");
+          if (!raw) return 0;
+          const marginX = parseFloat(raw);
+          return Number.isFinite(marginX) ? marginX : 0;
+        },
+        renderHTML: (attributes: EmbedAttributes) => ({
+          "data-margin-x": attributes.marginX,
+        }),
+      },
+      figmaPages: {
+        default: true,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-figma-pages");
+          if (raw === null) return true;
+          return raw === "true";
+        },
+        renderHTML: (attributes: EmbedAttributes) => ({
+          "data-figma-pages": attributes.figmaPages !== false ? "true" : "false",
         }),
       },
     };
@@ -91,6 +140,10 @@ export const Embed = Node.create<EmbedOptions>({
   renderHTML({ HTMLAttributes }) {
     const src = HTMLAttributes["data-src"];
     const safeHref = sanitizeUrl(src);
+    const provider = HTMLAttributes["data-provider"];
+    const fallbackLabel = provider
+      ? `${provider} embed`
+      : "Embedded content";
 
     return [
       "div",
@@ -103,9 +156,10 @@ export const Embed = Node.create<EmbedOptions>({
         "a",
         {
           href: safeHref,
-          target: "blank",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
-        safeHref,
+        fallbackLabel,
       ],
     ];
   },
@@ -115,10 +169,30 @@ export const Embed = Node.create<EmbedOptions>({
       setEmbed:
         (attrs: EmbedAttributes) =>
         ({ commands }) => {
+          const normalizedAttrs = { ...attrs };
+
+          if (normalizedAttrs.provider?.toLowerCase() === "figma") {
+            if (normalizedAttrs.fitToScreen === undefined) {
+              normalizedAttrs.fitToScreen = true;
+            }
+            if (normalizedAttrs.figmaPages === undefined) {
+              normalizedAttrs.figmaPages = true;
+            }
+            if (normalizedAttrs.marginX === undefined) {
+              normalizedAttrs.marginX = 0;
+            }
+            if (normalizedAttrs.width === undefined) {
+              normalizedAttrs.width = null;
+            }
+            if (normalizedAttrs.height === undefined) {
+              normalizedAttrs.height = 600;
+            }
+          }
+
           // Validate the URL before inserting
           const validatedAttrs = {
-            ...attrs,
-            src: sanitizeUrl(attrs.src),
+            ...normalizedAttrs,
+            src: sanitizeUrl(normalizedAttrs.src),
           };
 
           return commands.insertContent({

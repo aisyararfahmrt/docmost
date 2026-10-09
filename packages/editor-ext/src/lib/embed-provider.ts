@@ -33,9 +33,55 @@ export const embedProviders: IEmbedProvider[] = [
     id: "figma",
     name: "Figma",
     regex:
-      /^https:\/\/[\w\.-]+\.?figma.com\/(file|proto|board|design|slides|deck)\/([0-9a-zA-Z]{22,128})/,
+      /^https:\/\/(?:[\w\.-]+\.)?figma\.com\/(?:(file|proto|board|design|slides|deck)\/([0-9a-zA-Z]{22,128})|embed\?.*url=.+|(?:design|board|proto|slides|deck)\/[0-9a-zA-Z]{22,128})/,
     getEmbedUrl: (match, url: string) => {
-      return `https://www.figma.com/embed?url=${url}&embed_host=docmost`;
+      // Unwrap old Kit 1 embed URLs (www.figma.com/embed?url=...) to the
+      // original file URL first.
+      let sourceUrl = url;
+      try {
+        const parsed = new URL(url);
+        const nested = parsed.searchParams.get("url");
+        if (parsed.pathname.includes("/embed") && nested) {
+          sourceUrl = nested;
+        }
+      } catch {
+        sourceUrl = url;
+      }
+
+      try {
+        const parsed = new URL(sourceUrl);
+        // Support both www.figma.com and embed.figma.com hosts.
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        const rawType = (parts[0] || "design").toLowerCase();
+        const fileKey = parts[1] || "";
+        // Kit 1 used `file`, Kit 2 uses `design`.
+        const type =
+          rawType === "file"
+            ? "design"
+            : ["design", "board", "proto", "slides", "deck"].includes(rawType)
+              ? rawType
+              : "design";
+
+        const params = new URLSearchParams();
+        params.set("embed-host", "docmost");
+        // Browser-like: no footer link, but pages + zoom/pan stay on.
+        params.set("footer", "false");
+        params.set("page-selector", "true");
+        params.set("viewport-controls", "true");
+        const nodeId =
+          parsed.searchParams.get("node-id") ||
+          parsed.searchParams.get("node_id");
+        if (nodeId) params.set("node-id", nodeId);
+
+        if (fileKey) {
+          return `https://embed.figma.com/${type}/${fileKey}?${params.toString()}`;
+        }
+      } catch {
+        // Fall through to safe fallback below.
+      }
+
+      const encodedSourceUrl = encodeURIComponent(sourceUrl);
+      return `https://www.figma.com/embed?embed_host=docmost&url=${encodedSourceUrl}`;
     },
   },
   {
@@ -113,6 +159,38 @@ export const embedProviders: IEmbedProvider[] = [
     },
   },
 ];
+
+/**
+ * Reduce a Figma URL to its minimal canonical form for storage, so the
+ * original slug and extra query params (potentially private) are never
+ * persisted or rendered. Only type + file key (+ node-id) are kept.
+ */
+export function normalizeFigmaSourceUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const nested = parsed.searchParams.get("url");
+    const source = parsed.pathname.includes("/embed") && nested ? nested : url;
+    const p = new URL(source);
+    const parts = p.pathname.split("/").filter(Boolean);
+    const rawType = (parts[0] || "design").toLowerCase();
+    const fileKey = parts[1] || "";
+    const type =
+      rawType === "file"
+        ? "design"
+        : ["design", "board", "proto", "slides", "deck"].includes(rawType)
+          ? rawType
+          : "design";
+    if (!fileKey) return url;
+    const nodeId =
+      p.searchParams.get("node-id") || p.searchParams.get("node_id");
+    return (
+      `https://www.figma.com/${type}/${fileKey}` +
+      (nodeId ? `?node-id=${encodeURIComponent(nodeId)}` : "")
+    );
+  } catch {
+    return url;
+  }
+}
 
 export function getEmbedProviderById(id: string) {
   return embedProviders.find(
